@@ -9,9 +9,6 @@ const pool = new Pool({
   database: 'lightbnb'
 })
 
-const properties = require('./json/properties.json');
-const users = require('./json/users.json');
-
 /// Users
 
 /**
@@ -87,8 +84,6 @@ const addUser = (name, email, password) => {
     })
 }
 
-
-
 /// Reservations
 
 /**
@@ -96,9 +91,6 @@ const addUser = (name, email, password) => {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-// const getAllReservations = function (guest_id, limit = 10) {
-//   return getAllProperties(null, 2);
-// }
 
 const getAllReservations = (guest_id, limit = 10) => {
 
@@ -123,15 +115,6 @@ const getAllReservations = (guest_id, limit = 10) => {
     })
 }
 
-// SELECT reservations.id, properties.title, properties.cost_per_night, reservations.start_date, avg(rating) as average_rating
-// FROM reservations
-// JOIN properties ON reservations.property_id = properties.id
-// JOIN property_reviews ON properties.id = property_reviews.property_id
-// WHERE reservations.guest_id = 1
-// GROUP BY properties.id, reservations.id
-// ORDER BY reservations.start_date
-// LIMIT 10;
-
 /// Properties
 
 /**
@@ -141,26 +124,10 @@ const getAllReservations = (guest_id, limit = 10) => {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 
-// const getAllProperties = (options, limit = 10) => {
-
-//   return pool
-//     .query(`
-//       SELECT * FROM properties
-//       LIMIT $1`,
-//       [limit])
-//     .then((result) => {
-//       console.log(result.rows);
-//       return result.rows;
-//     })
-//     .catch((err) => {
-//       console.log(err.message);
-//     });
-// };
-
 const getAllProperties = function (options, limit = 10) {
-  // 1
+
   const queryParams = [];
-  // 2
+
   let queryString = `
   SELECT properties.*, avg(property_reviews.rating) as average_rating
   FROM properties
@@ -169,7 +136,6 @@ const getAllProperties = function (options, limit = 10) {
 
   let stringToAppend = ''
 
-  // 3
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     stringToAppend += `${stringToAppend === '' ? ` WHERE` : ` AND`} city LIKE $${queryParams.length}`;
@@ -201,7 +167,6 @@ const getAllProperties = function (options, limit = 10) {
     stringToAppend += `${stringToAppend === '' ? ` WHERE` : ` AND`} property_reviews.rating >= $${query.Params.length}`
   }
 
-  // 4
   queryParams.push(limit);
   queryString += stringToAppend
   queryString += `
@@ -210,10 +175,8 @@ const getAllProperties = function (options, limit = 10) {
   LIMIT $${queryParams.length};
   `;
 
-  // 5
   console.log(queryString, queryParams);
 
-  // 6
   return pool.query(queryString, queryParams)
     .then((res) => res.rows);
 };
@@ -224,17 +187,30 @@ const getAllProperties = function (options, limit = 10) {
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+
+//INSERT QUERY
+const generateQuery = (tableName, obj) => {
+  const objectEntries = Object.entries(obj)
+  const keysJoined = objectEntries.map((entry) => entry[0]).join(', ')
+  const values = objectEntries.map((entry) => entry[1])
+  const query = `INSERT INTO ${tableName} (${keysJoined}) 
+  VALUES (${Object.keys(obj).map((key, index) => `$${index + 1}`)})
+  RETURNING *`
+  return { query, values }
 }
 
-
-
-
-getAllProperties('3', 10)
+const addProperty = (property) => {
+  const { query, values } = generateQuery('properties', property)
+  return pool.query(query, values)
+    .then((result) => {
+      console.log(result.rows[0]);
+      return result.rows[0]
+    })
+    .catch((err) => {
+      console.log(err.message)
+      return null
+    })
+}
 
 exports.getAllReservations = getAllReservations;
 exports.addProperty = addProperty;
