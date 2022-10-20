@@ -102,7 +102,8 @@ const addUser = (name, email, password) => {
 const getAllReservations = (guest_id, limit = 10) => {
 
   return pool.query(`
-    SELECT reservations.id, properties.*, reservations.start_date, reservations.end_date, avg(rating) as average_rating
+    SELECT reservations.id, properties.*, reservations.start_date, 
+    reservations.end_date, avg(rating) as average_rating
     FROM reservations
     JOIN properties ON reservations.property_id = properties.id
     JOIN property_reviews ON properties.id = property_reviews.property_id
@@ -112,8 +113,8 @@ const getAllReservations = (guest_id, limit = 10) => {
     LIMIT $2;
   `, [guest_id, limit])
     .then((result) => {
-      console.log(result.rows[0]);
-      return result.rows[0]
+      console.log(result.rows);
+      return result.rows
     })
     .catch((err) => {
       console.log(err.message)
