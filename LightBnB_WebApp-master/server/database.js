@@ -20,6 +20,7 @@ const users = require('./json/users.json');
  */
 
 const getUserWithEmail = (email) => {
+
   const toLowerCase = email.toLowerCase()
   return pool.query(`
     SELECT * FROM users
@@ -43,6 +44,7 @@ const getUserWithEmail = (email) => {
  */
 
 const getUserWithId = (id) => {
+
   return pool.query(`
   SELECT * FROM users
   WHERE users.id = $1
@@ -64,16 +66,11 @@ const getUserWithId = (id) => {
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-// const addUser = function (user) {
-//   const userId = Object.keys(users).length + 1;
-//   user.id = userId;
-//   users[userId] = user;
-//   return Promise.resolve(user);
-// }
 
 //
 const addUser = (name, email, password) => {
-  pool.query(`
+
+  return pool.query(`
     INSERT INTO users 
     (name, email, password) 
     VALUES ($1, $2, $3)
@@ -98,9 +95,40 @@ const addUser = (name, email, password) => {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+// const getAllReservations = function (guest_id, limit = 10) {
+//   return getAllProperties(null, 2);
+// }
+
+const getAllReservations = (guest_id, limit = 10) => {
+
+  return pool.query(`
+    SELECT reservations.id, properties.*, reservations.start_date, reservations.end_date, avg(rating) as average_rating
+    FROM reservations
+    JOIN properties ON reservations.property_id = properties.id
+    JOIN property_reviews ON properties.id = property_reviews.property_id
+    WHERE reservations.guest_id = $1
+    GROUP BY properties.id, reservations.id
+    ORDER BY reservations.start_date
+    LIMIT $2;
+  `, [guest_id, limit])
+    .then((result) => {
+      console.log(result.rows[0]);
+      return result.rows[0]
+    })
+    .catch((err) => {
+      console.log(err.message)
+      return null
+    })
 }
+
+// SELECT reservations.id, properties.title, properties.cost_per_night, reservations.start_date, avg(rating) as average_rating
+// FROM reservations
+// JOIN properties ON reservations.property_id = properties.id
+// JOIN property_reviews ON properties.id = property_reviews.property_id
+// WHERE reservations.guest_id = 1
+// GROUP BY properties.id, reservations.id
+// ORDER BY reservations.start_date
+// LIMIT 10;
 
 /// Properties
 
@@ -139,8 +167,6 @@ const addProperty = function (property) {
   properties[propertyId] = property;
   return Promise.resolve(property);
 }
-
-addUser('Jon Fejtek', 'mrpoops@gmail.com', 'password')
 
 exports.getAllReservations = getAllReservations;
 exports.addProperty = addProperty;
